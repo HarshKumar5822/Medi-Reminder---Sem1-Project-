@@ -166,7 +166,7 @@ const Profile = () => {
                                             if (!token) throw new Error("Not authenticated");
 
                                             // Fetch all logs directly for the report to avoid context wiring issues here
-                                            const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+                                            const API_URL = import.meta.env.VITE_API_URL || "https://medi-reminder-sem1-project-s6re.onrender.com";
                                             const res = await fetch(`${API_URL}/logs/`, {
                                                 headers: { Authorization: `Bearer ${token}` }
                                             });

@@ -4,7 +4,7 @@ import { Medicine, MedicineLog, getTodayStr } from "@/lib/medicines";
 // For simplicity in this architecture, we'll read from localStorage directly in the fetch calls here
 // or better, we could make this context dependent on AuthContext, but let's keep it simple.
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "https://medi-reminder-sem1-project-s6re.onrender.com";
 const STORAGE_KEY = "medi_reminder_token";
 
 interface MedicinesContextType {
