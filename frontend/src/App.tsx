@@ -3,8 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Layout from "@/components/Layout";
+import { Loader2 } from "lucide-react";
 import AlarmModal from "@/components/AlarmModal";
 import { useMedicines } from "@/hooks/useMedicines";
 import { useAlarm } from "@/hooks/useAlarm";
@@ -21,6 +22,25 @@ import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function AppContent() {
   const { medicines, todayMedicines, markAsTaken } = useMedicines();
@@ -46,39 +66,53 @@ function AppContent() {
 
         {/* Protected Routes wrapped in Layout */}
         <Route path="/" element={
-          <Layout>
-            <Dashboard />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/medicines" element={
-          <Layout>
-            <MedicineList />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <MedicineList />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/schedule" element={
-          <Layout>
-            <Schedule />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Schedule />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/profile" element={
-          <Layout>
-            <Profile />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/settings" element={
-          <Layout>
-            <Settings />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/add" element={
-          <Layout>
-            <AddMedicine />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <AddMedicine />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/history" element={
-          <Layout>
-            <HistoryPage />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <HistoryPage />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -88,8 +122,8 @@ function AppContent() {
 }
 
 import { MedicinesProvider } from "@/context/MedicinesContext";
-
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ReactNode } from "react";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

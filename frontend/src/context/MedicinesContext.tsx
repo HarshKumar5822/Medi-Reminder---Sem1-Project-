@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { Medicine, MedicineLog, getTodayStr } from "@/lib/medicines";
+import { useAuth } from "./AuthContext";
 // We need to access the token slightly differently or pass it in. 
 // For simplicity in this architecture, we'll read from localStorage directly in the fetch calls here
 // or better, we could make this context dependent on AuthContext, but let's keep it simple.
@@ -27,11 +28,11 @@ const MedicinesContext = createContext<MedicinesContextType | undefined>(undefin
 export function MedicinesProvider({ children }: { children: ReactNode }) {
     const [medicines, setMedicines] = useState<Medicine[]>([]);
     const [logs, setLogs] = useState<MedicineLog[]>([]);
+    const { token } = useAuth();
 
     const getToken = () => localStorage.getItem(STORAGE_KEY);
 
     const fetchData = useCallback(async () => {
-        const token = getToken();
         if (!token) {
             setMedicines([]);
             setLogs([]);
@@ -101,7 +102,7 @@ export function MedicinesProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error("Failed to fetch data", err);
         }
-    }, []);
+    }, [token]);
 
     // Poll for data or fetch on mount/token change
     useEffect(() => {
@@ -112,48 +113,59 @@ export function MedicinesProvider({ children }: { children: ReactNode }) {
     }, [fetchData]);
 
     const addMedicine = useCallback(async (med: Omit<Medicine, "id" | "status">) => {
-        const token = getToken();
-        if (!token) return;
+        if (!token) throw new Error("Not authenticated");
 
-        try {
-            // Map to backend expected format
-            const payload = {
-                ...med,
-                start_date: med.startDate,
-                end_date: med.endDate,
-                dependent_name: med.dependentName || null
-            };
+        // Map to backend expected format
+        const payload = {
+            ...med,
+            start_date: med.startDate,
+            end_date: med.endDate,
+            dependent_name: med.dependentName || null
+        };
 
-            await fetch(`${API_URL}/medicines/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-            fetchData();
-        } catch (err) {
-            console.error(err);
+        const res = await fetch(`${API_URL}/medicines/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error("Failed to add medicine:", errText);
+            throw new Error(`Error ${res.status}: ${errText}`);
         }
-    }, [fetchData]);
+        
+        // Optimistically update local state so UI feels instant, then fetch background sync
+        const createdMed = await res.json();
+        const newMed = {
+            ...createdMed,
+            startDate: createdMed.start_date,
+            endDate: createdMed.end_date,
+            dependentName: createdMed.dependent_name,
+            status: "upcoming"
+        };
+        
+        setMedicines(prev => [...prev, newMed]);
+        fetchData(); // Don't await this, let it happen in background
+    }, [token, fetchData]);
 
     const updateMedicine = useCallback(async (id: string, updates: Partial<Medicine>) => {
         // Implement if backend supports PATCH/PUT
     }, []);
 
     const deleteMedicine = useCallback(async (id: string) => {
-        const token = getToken();
         if (!token) return;
         await fetch(`${API_URL}/medicines/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` }
         });
         fetchData();
-    }, [fetchData]);
+    }, [token, fetchData]);
 
     const refillMedicine = useCallback(async (id: string, amount: number) => {
-        const token = getToken();
         if (!token) return;
         try {
             await fetch(`${API_URL}/medicines/${id}/refill`, {
@@ -168,10 +180,9 @@ export function MedicinesProvider({ children }: { children: ReactNode }) {
         } catch (err) {
             console.error("Failed to refill", err);
         }
-    }, [fetchData]);
+    }, [token, fetchData]);
 
     const markAsTaken = useCallback(async (medicineId: string, time: string) => {
-        const token = getToken();
         if (!token) return;
 
         // Find med details
@@ -197,10 +208,9 @@ export function MedicinesProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify(payload)
         });
         fetchData();
-    }, [medicines, fetchData]);
+    }, [token, medicines, fetchData]);
 
     const markAsMissed = useCallback(async (medicineId: string, time: string) => {
-        const token = getToken();
         if (!token) return;
 
         const med = medicines.find(m => m.id === medicineId);
@@ -224,7 +234,7 @@ export function MedicinesProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify(payload)
         });
         fetchData();
-    }, [medicines, fetchData]);
+    }, [token, medicines, fetchData]);
 
     const todayMedicines = medicines.filter((m) => {
         const today = getTodayStr();

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Pill, Plus, X, ArrowLeft, Sparkles } from "lucide-react";
+import { Pill, Plus, X, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,10 @@ export default function AddMedicine() {
   const [startDate, setStartDate] = useState(getTodayStr());
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [inventory, setInventory] = useState<number>(30);
+  const [inventory, setInventory] = useState<number | "">(30);
   const [dependentName, setDependentName] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const suggestions = useMemo(() => {
     if (name.length < 1) return [];
@@ -45,25 +46,36 @@ export default function AddMedicine() {
   const updateTime = (i: number, val: string) =>
     setTimes((prev) => prev.map((t, idx) => (idx === i ? val : t)));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !dosage.trim() || !endDate) {
       toast.error("Please fill in all required fields");
       return;
     }
-    addMedicine({
-      name: name.trim(),
-      dosage: dosage.trim(),
-      frequency,
-      times,
-      startDate,
-      endDate,
-      notes: notes.trim(),
-      inventory,
-      dependentName: dependentName.trim() || undefined,
-    });
-    toast.success(`${name} added successfully! 💊`);
-    navigate("/medicines");
+
+    setIsSubmitting(true);
+    try {
+      await addMedicine({
+        name: name.trim(),
+        dosage: dosage.trim(),
+        frequency,
+        times,
+        startDate,
+        endDate,
+        notes: notes.trim(),
+        inventory: inventory === "" ? 0 : inventory,
+        dependentName: dependentName.trim() || undefined,
+      });
+      
+      toast.success(`${name} added successfully! 💊`);
+      navigate("/medicines");
+    } catch (err: any) {
+      const errMsg = err?.message || "Unknown error";
+      toast.error(`Failed to add medicine: ${errMsg}`);
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -107,7 +119,8 @@ export default function AddMedicine() {
                     <button
                       key={s}
                       type="button"
-                      onClick={() => {
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent input onBlur from hiding the suggestions before click
                         setName(s);
                         setShowSuggestions(false);
                       }}
@@ -150,7 +163,7 @@ export default function AddMedicine() {
                   type="number"
                   min="0"
                   value={inventory}
-                  onChange={(e) => setInventory(Number(e.target.value))}
+                  onChange={(e) => setInventory(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="Total pills"
                   className="mt-1.5 rounded-xl border-border bg-background"
                 />
@@ -253,10 +266,20 @@ export default function AddMedicine() {
 
           <Button
             type="submit"
+            disabled={isSubmitting}
             className="w-full rounded-xl py-6 text-base font-semibold gradient-hero text-primary-foreground border-0"
           >
-            <Pill className="mr-2 h-5 w-5" />
-            Save Medicine
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Pill className="mr-2 h-5 w-5" />
+                Save Medicine
+              </>
+            )}
           </Button>
         </form>
       </motion.div>

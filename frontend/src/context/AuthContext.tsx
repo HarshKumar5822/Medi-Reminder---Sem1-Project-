@@ -18,6 +18,7 @@ interface AuthContextType {
     updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
     isAuthenticated: boolean;
     isLoading: boolean;
+    token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,17 +72,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body: JSON.stringify({ email, password })
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.detail || "Login failed");
+                // Not all backends return JSON for 4xx/5xx errors, handle plain text gracefully
+                let errorMsg = "Login failed";
+                try {
+                    const errorData = await res.json();
+                    errorMsg = errorData.detail || errorMsg;
+                } catch (e) {
+                    errorMsg = await res.text() || errorMsg;
+                }
+                throw new Error(errorMsg);
             }
 
+            const data = await res.json();
             localStorage.setItem(STORAGE_KEY, data.access_token);
             setToken(data.access_token);
             toast.success("Welcome back!");
         } catch (err: any) {
-            toast.error(err.message);
+            const errStr = err.message || "Unknown login error";
+            toast.error(`Login failed: ${errStr}`);
             throw err;
         }
     };
@@ -189,7 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 updateUser,
                 updatePassword,
                 isAuthenticated: !!user,
-                isLoading
+                isLoading,
+                token
             }}
         >
             {children}
