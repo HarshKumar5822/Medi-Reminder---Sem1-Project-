@@ -105,11 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 body: JSON.stringify({ email, password, full_name: fullName, phone })
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.detail || "Registration failed");
+                let errorMsg = "Registration failed";
+                try {
+                    const errorData = await res.json();
+                    if (errorData.detail) {
+                        errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+                    }
+                } catch (e) {
+                    errorMsg = await res.text() || errorMsg;
+                }
+                throw new Error(errorMsg);
             }
+
+            const data = await res.json();
 
             localStorage.setItem(STORAGE_KEY, data.access_token);
             setToken(data.access_token);
