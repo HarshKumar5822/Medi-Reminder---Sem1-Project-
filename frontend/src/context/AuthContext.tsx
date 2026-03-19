@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "medi_reminder_token";
 const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? "http://localhost:8000" : "https://medi-reminder-sem1-project-s6re.onrender.com");
+const API_URL = isLocalhost ? "http://localhost:8000" : "https://medi-reminder-sem1-project-s6re.onrender.com";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);

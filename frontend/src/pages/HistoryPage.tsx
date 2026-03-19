@@ -17,7 +17,7 @@ export default function HistoryPage() {
       try {
         const token = localStorage.getItem("medi_reminder_token");
         if (!token) return;
-        const API_URL = import.meta.env.VITE_API_URL || "https://medi-reminder-sem1-project-s6re.onrender.com";
+        const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? "http://localhost:8000" : "https://medi-reminder-sem1-project-s6re.onrender.com";
         const res = await fetch(`${API_URL}/vitals/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
