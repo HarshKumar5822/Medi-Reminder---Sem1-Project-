@@ -24,7 +24,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "medi_reminder_token";
-const API_URL = import.meta.env.VITE_API_URL || "https://medi-reminder-sem1-project-s6re.onrender.com";
+const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? "http://localhost:8000" : "https://medi-reminder-sem1-project-s6re.onrender.com");
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -32,12 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (token) {
+        if (token && !user) {
             fetchUser(token);
-        } else {
+        } else if (!token) {
             setIsLoading(false);
         }
-    }, [token]);
+    }, [token, user]);
 
     const fetchUser = async (authToken: string) => {
         try {
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const data = await res.json();
             localStorage.setItem(STORAGE_KEY, data.access_token);
             setToken(data.access_token);
+            await fetchUser(data.access_token);
             toast.success("Welcome back!");
         } catch (err: any) {
             const errStr = err.message || "Unknown login error";
@@ -111,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             localStorage.setItem(STORAGE_KEY, data.access_token);
             setToken(data.access_token);
+            await fetchUser(data.access_token);
             toast.success("Account created!");
         } catch (err: any) {
             toast.error(err.message);

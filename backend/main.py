@@ -13,6 +13,7 @@ origins = [
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
     "http://localhost:3000",
+    "http://localhost:8080",
     "https://medi-reminder.vercel.app",  # Production Vercel URL
     "https://medi-reminder-sem1-project.vercel.app", # Potential Vercel URL
 ]
